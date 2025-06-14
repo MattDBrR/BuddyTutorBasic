@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/view_face"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    tools:context=".MainActivity">
+
+    <!-- Interface transparente pour préserver l'aspect social du robot -->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:gravity="center"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎓 Assistant Scolaire Buddy"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#2196F3"
+            android:layout_marginBottom="30dp" />
+
+        <!-- Boutons d'accueil -->
+        <Button
+            android:id="@+id/btnWelcome"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="👋 Dire Bonjour"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp"
+            android:backgroundTint="#4CAF50" />
+
+        <Button
+            android:id="@+id/btnEncouragement"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="💪 M'encourager"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp"
+            android:backgroundTint="#FF9800" />
+
+        <Button
+            android:id="@+id/btnHelp"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="🤔 J'ai besoin d'aide"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp"
+            android:backgroundTint="#2196F3" />
+
+        <Button
+            android:id="@+id/btnCelebrate"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="🎉 J'ai réussi !"
+            android:textSize="18sp"
+            android:layout_marginBottom="20dp"
+            android:backgroundTint="#9C27B0" />
+
+        <!-- État du SDK -->
+        <TextView
+            android:id="@+id/sdkStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⏳ Initialisation SDK..."
+            android:textSize="14sp"
+            android:textColor="#666666" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
