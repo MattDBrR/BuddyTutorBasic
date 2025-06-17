@@ -5,6 +5,7 @@ import android.os.Handler;
 import com.bfr.buddy.ui.shared.FacialExpression;
 import com.bfr.buddy.utils.events.EventItem;
 import com.bfr.buddysdk.BuddyActivity;
+import com.bfr.buddysdk.BuddySDK;
 import com.bfr.helloworld.buddy.BuddyController;
 import com.bfr.helloworld.buddy.BuddySpeechManager;
 import com.bfr.helloworld.quiz.AnswerProcessor;
@@ -12,6 +13,7 @@ import com.bfr.helloworld.quiz.QuizManager;
 import com.bfr.helloworld.quiz.ScoreManager;
 import com.bfr.helloworld.ui.UIController;
 import com.bfr.helloworld.utils.Logger;
+import com.bfr.helloworld.buddy.BuddyHeadTracker;
 
 /**
  * Activité principale - Interface 100% Vocale
@@ -21,6 +23,9 @@ public class MainActivity extends BuddyActivity
         implements QuizManager.QuizCallback, BuddyController.BuddyInitCallback {
 
     private static final String TAG = "MainActivity";
+
+    //Tracker
+    private BuddyHeadTracker headTracker;
 
     // Contrôleurs principaux
     private UIController uiController;
@@ -36,6 +41,8 @@ public class MainActivity extends BuddyActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        headTracker = new BuddyHeadTracker();
         setContentView(R.layout.activity_main);
 
         Logger.i(TAG, "=== DÉMARRAGE QUIZ VOCAL BUDDY ===");
@@ -120,6 +127,8 @@ public class MainActivity extends BuddyActivity
         Logger.i(TAG, "Démarrage séquence vocale");
 
         isWaitingForQuizConfirmation = true;
+
+        headTracker.startTracking();
 
         // Message de bienvenue + proposition de quiz
         buddyController.getSpeechManager().speak(
@@ -414,6 +423,7 @@ public class MainActivity extends BuddyActivity
         Logger.i(TAG, "Réponse traitée: " + processedAnswer.getResult());
 
         if (processedAnswer.isCorrect()) {
+            headTracker.stopTracking();
             // BONNE RÉPONSE - TIMING OPTIMISÉ
             Logger.d(TAG, "Bonne réponse - séquence optimisée");
 
@@ -451,6 +461,7 @@ public class MainActivity extends BuddyActivity
             );
 
         } else if (processedAnswer.isValid()) {
+            headTracker.stopTracking();
             // MAUVAISE RÉPONSE - Pas de mouvement, juste expression et parole
             Logger.d(TAG, "Mauvaise réponse - expression triste seulement");
 
@@ -471,6 +482,7 @@ public class MainActivity extends BuddyActivity
             );
 
         } else {
+            headTracker.stopTracking();
             // RÉPONSE INVALIDE - Expression de réflexion
             Logger.w(TAG, "Réponse invalide, guidage utilisateur");
 
@@ -496,6 +508,7 @@ public class MainActivity extends BuddyActivity
                 );
             });
         }
+        headTracker.startTracking();
     }
 
     // MODIFICATION POUR onQuizFinished - Score exceptionnel = triple hochement
@@ -513,6 +526,7 @@ public class MainActivity extends BuddyActivity
         // TIMING OPTIMISÉ: Mouvement pendant la parole de fin
         if (hasPassingGrade) {
             if (isPerfectScore) {
+                headTracker.stopTracking();
                 // SCORE PARFAIT = Triple hochement + danse
                 Logger.i(TAG, "🏆 SCORE PARFAIT - Célébration maximale");
 
@@ -525,6 +539,7 @@ public class MainActivity extends BuddyActivity
                 }, 3000);
 
             } else {
+                headTracker.stopTracking();
                 // BON SCORE = Hochement simple + danse
                 handler.postDelayed(() -> {
                     buddyController.getMovementManager().performYesNod();
@@ -533,7 +548,9 @@ public class MainActivity extends BuddyActivity
                 handler.postDelayed(() -> {
                     buddyController.getMovementManager().performVictoryDance();
                 }, 2500);
+
             }
+            headTracker.startTracking();
         }
 
         // Parole de fin
@@ -575,6 +592,8 @@ public class MainActivity extends BuddyActivity
                     }
                 });
     }
+
+
 
     // ========== GESTION DU CYCLE DE VIE ==========
 

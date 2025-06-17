@@ -35,7 +35,7 @@ public class BuddyMovementManager {
 
         try {
             // Activer le moteur YES (hochement)
-            BuddySDK.USB.enableYesMove(1, new IUsbCommadRsp.Stub() {
+            BuddySDK.USB.enableYesMove(true, new IUsbCommadRsp.Stub() {
                 @Override
                 public void onSuccess(String s) throws RemoteException {
                     Logger.i(TAG, "✅ Moteur YES activé avec succès");
