@@ -1,6 +1,7 @@
 package com.bfr.helloworld.quiz;
 
 import android.os.Handler;
+import android.os.Looper;
 import com.bfr.helloworld.ui.UICallback;
 import com.bfr.helloworld.utils.Logger;
 
@@ -45,7 +46,7 @@ public class QuizManager {
         this.quizCallback = quizCallback;
         this.questionGenerator = new QuestionGenerator(totalQuestions);
         this.scoreManager = new ScoreManager(totalQuestions);
-        this.handler = new Handler();
+        this.handler = new Handler(Looper.getMainLooper());
         this.currentState = QuizState.NOT_STARTED;
         this.currentQuestionIndex = 0;
 
@@ -122,7 +123,7 @@ public class QuizManager {
 
         handler.postDelayed(() -> {
             uiCallback.setListenAnswerEnabled(true);
-            uiCallback.updateStatus("Maintenant, appuie sur 'Écouter' et dis ta réponse !");
+            uiCallback.updateStatus("Maintenant, dis ta réponse !");
         }, 1000);
     }
 
@@ -141,7 +142,7 @@ public class QuizManager {
     }
 
     /**
-     * Traite une réponse vocale reçue
+     * Traite une réponse vocale reçue - VERSION CORRIGÉE
      */
     public void processVocalAnswer(String utterance) {
         if (currentState != QuizState.WAITING_FOR_ANSWER) {
@@ -149,17 +150,23 @@ public class QuizManager {
             return;
         }
 
+        Logger.i(TAG, "=== TRAITEMENT RÉPONSE VOCALE ===");
+        Logger.i(TAG, "Utterance reçue: '" + utterance + "'");
+
         currentState = QuizState.PROCESSING_ANSWER;
 
         int expectedAnswer = questionGenerator.getAnswer(currentQuestionIndex);
         AnswerProcessor.ProcessedAnswer processedAnswer = AnswerProcessor.processAnswer(utterance, expectedAnswer);
 
-        Logger.i(TAG, "Réponse traitée: " + processedAnswer.getResult() +
-                " (extrait: " + processedAnswer.getExtractedNumber() +
-                ", attendu: " + expectedAnswer + ")");
+        Logger.i(TAG, "Résultat traitement: " + processedAnswer.getResult());
+        Logger.i(TAG, "Valeur extraite: " + processedAnswer.getExtractedNumber());
+        Logger.i(TAG, "Réponse attendue: " + expectedAnswer);
 
-        // Mettre à jour l'UI selon le résultat
+        // CORRECTION : Gestion des trois cas
         if (processedAnswer.isValid()) {
+            // Réponse valide (correcte ou incorrecte)
+            Logger.i(TAG, "Réponse VALIDE - progression vers question suivante");
+
             if (processedAnswer.isCorrect()) {
                 scoreManager.addCorrectAnswer();
                 uiCallback.updateStatus("✅ Bonne réponse !");
@@ -174,22 +181,51 @@ public class QuizManager {
             // Notifier le callback pour la parole et les mouvements
             quizCallback.onAnswerProcessed(processedAnswer, expectedAnswer);
 
-            // Programmer la question suivante
+            // Programmer la question suivante après feedback
             handler.postDelayed(() -> {
-                currentState = QuizState.RUNNING;
-                askCurrentQuestion();
-            }, 3000);
+                if (currentState == QuizState.PROCESSING_ANSWER) {
+                    currentState = QuizState.RUNNING;
+                    askCurrentQuestion();
+                }
+            }, 5000); // 5 secondes pour laisser le temps à la séquence de joie
 
         } else {
-            // Réponse invalide, permettre de réessayer
-            currentState = QuizState.WAITING_FOR_ANSWER;
+            // Réponse invalide - RESTER SUR LA MÊME QUESTION
+            Logger.w(TAG, "Réponse INVALIDE - on reste sur la même question");
+
+            currentState = QuizState.WAITING_FOR_ANSWER; // IMPORTANT : Retour à l'état d'écoute
+
             uiCallback.updateStatus("Pas compris: '" + utterance + "'. Réessaie !");
-            uiCallback.setListenAnswerEnabled(true);
+
+            // CORRECTION : Notifier quand même le callback pour le feedback vocal
+            quizCallback.onAnswerProcessed(processedAnswer, expectedAnswer);
 
             // Donner un feedback pour améliorer
             String suggestion = AnswerProcessor.generateImprovementSuggestion(utterance);
             Logger.d(TAG, "Suggestion d'amélioration: " + suggestion);
+
+            // Ne PAS incrémenter la question, ne PAS changer currentQuestionIndex
+            Logger.d(TAG, "Question actuelle maintenue : " + (currentQuestionIndex + 1));
         }
+    }
+
+    /**
+     * Force la relance de l'écoute pour la question actuelle
+     */
+    public void retryCurrentQuestion() {
+        Logger.i(TAG, "Relance écoute pour question actuelle: " + (currentQuestionIndex + 1));
+
+        if (currentState != QuizState.WAITING_FOR_ANSWER) {
+            currentState = QuizState.WAITING_FOR_ANSWER;
+        }
+
+        // Relancer la séquence d'écoute
+        handler.postDelayed(() -> {
+            if (currentState == QuizState.WAITING_FOR_ANSWER) {
+                uiCallback.updateStatus("Nouvelle tentative - dis clairement le nombre");
+                uiCallback.setListenAnswerEnabled(true);
+            }
+        }, 2000);
     }
 
     /**

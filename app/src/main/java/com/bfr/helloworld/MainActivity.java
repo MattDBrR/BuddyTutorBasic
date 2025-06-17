@@ -1,6 +1,7 @@
 package com.bfr.helloworld;
 
 import android.os.Bundle;
+import android.os.Handler;
 import com.bfr.buddy.ui.shared.FacialExpression;
 import com.bfr.buddy.utils.events.EventItem;
 import com.bfr.buddysdk.BuddyActivity;
@@ -13,7 +14,8 @@ import com.bfr.helloworld.ui.UIController;
 import com.bfr.helloworld.utils.Logger;
 
 /**
- * Activité principale - Version modulaire avec FreeSpeech
+ * Activité principale - Interface 100% Vocale
+ * Interaction uniquement par reconnaissance vocale, pas de boutons
  */
 public class MainActivity extends BuddyActivity
         implements QuizManager.QuizCallback, BuddyController.BuddyInitCallback {
@@ -24,52 +26,59 @@ public class MainActivity extends BuddyActivity
     private UIController uiController;
     private BuddyController buddyController;
     private QuizManager quizManager;
+    private Handler handler;
 
     // État de l'application
     private boolean isSDKReady = false;
+    private boolean isQuizStarted = false;
+    private boolean isWaitingForQuizConfirmation = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Logger.i(TAG, "=== DÉMARRAGE QUIZ DE MATHS BUDDY ===");
+        Logger.i(TAG, "=== DÉMARRAGE QUIZ VOCAL BUDDY ===");
+
+        // CORRECTION : Interface COMPLÈTEMENT transparente
+        getWindow().setStatusBarColor(0x00000000);
+        getWindow().setNavigationBarColor(0x00000000);
+
+        // Rendre l'activité complètement transparente
+        getWindow().getDecorView().setSystemUiVisibility(
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                        android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                        android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                        android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                        android.view.View.SYSTEM_UI_FLAG_FULLSCREEN |
+                        android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        );
 
         initializeControllers();
-        setupUI();
     }
 
     /**
      * Initialise tous les contrôleurs
      */
     private void initializeControllers() {
-        // Contrôleur UI
+        // Contrôleur UI compatible vocal
         uiController = new UIController(this);
         uiController.initializeDefaultState();
 
         // Contrôleur Buddy
         buddyController = new BuddyController(this);
 
+        // Handler pour les délais
+        handler = new Handler();
+
         Logger.i(TAG, "Contrôleurs initialisés");
-    }
-
-    /**
-     * Configure l'interface utilisateur
-     */
-    private void setupUI() {
-        uiController.setButtonListeners(
-                this::onStartQuizClicked,
-                this::onListenAnswerClicked
-        );
-
-        Logger.i(TAG, "Interface utilisateur configurée");
     }
 
     @Override
     public void onSDKReady() {
-        Logger.i(TAG, "SDK Buddy prêt - initialisation directe avec FreeSpeech");
+        Logger.i(TAG, "SDK Buddy prêt - initialisation interface vocale");
 
-        // Initialisation directe de Buddy - plus besoin de permissions
+        // Initialisation directe de Buddy
         uiController.updateStatus("Initialisation de Buddy...");
         buddyController.initialize(this);
     }
@@ -78,45 +87,226 @@ public class MainActivity extends BuddyActivity
 
     @Override
     public void onBuddyReady() {
-        Logger.i(TAG, "Buddy prêt avec FreeSpeech !");
+        Logger.i(TAG, "Buddy prêt pour interface vocale !");
         isSDKReady = true;
+
+        // CORRECTION : Activer les moteurs de tête
+        buddyController.getMovementManager().enableHeadMotors();
 
         // Initialiser le gestionnaire de quiz
         quizManager = new QuizManager(uiController, this);
 
-        // Mettre à jour l'UI
-        uiController.setStartQuizEnabled(true);
-        uiController.updateStatus("✅ Prêt ! Appuie sur 'Commencer le Quiz'");
+        uiController.updateStatus("✅ Prêt pour quiz vocal !");
 
-        // Message de bienvenue - CORRECTION ICI
-        buddyController.getSpeechManager().speakWelcome(new BuddySpeechManager.SpeechCallback() {
-            @Override
-            public void onSpeechFinished() {
-                Logger.d(TAG, "Message de bienvenue terminé");
-            }
-        });
+        // SÉQUENCE VOCALE DE DÉMARRAGE
+        startVocalQuizSequence();
     }
 
     @Override
     public void onBuddyError(String error) {
         Logger.e(TAG, "Erreur Buddy: " + error);
         uiController.showError("Erreur Buddy: " + error);
+
+        // Réessayer dans 5 secondes
+        handler.postDelayed(this::startVocalQuizSequence, 5000);
+    }
+
+    // ========== SÉQUENCE VOCALE PRINCIPALE ==========
+
+    /**
+     * Démarre la séquence vocale de proposition de quiz
+     */
+    private void startVocalQuizSequence() {
+        Logger.i(TAG, "Démarrage séquence vocale");
+
+        isWaitingForQuizConfirmation = true;
+
+        // Message de bienvenue + proposition de quiz
+        buddyController.getSpeechManager().speak(
+                "Bonjour ! Je suis ton professeur de maths Buddy ! " +
+                        "Es-tu prêt pour un quiz de mathématiques ? " +
+                        "Dis 'oui' pour commencer ou 'non' si tu préfères attendre.",
+                new BuddySpeechManager.SpeechCallback() {
+                    @Override
+                    public void onSpeechFinished() {
+                        Logger.d(TAG, "Proposition de quiz terminée - activation écoute");
+
+                        // Petit délai puis activation écoute
+                        handler.postDelayed(() -> {
+                            buddyController.getSpeechManager().speak("Je t'écoute...",
+                                    new BuddySpeechManager.SpeechCallback() {
+                                        @Override
+                                        public void onSpeechFinished() {
+                                            activateQuizConfirmationListening();
+                                        }
+                                    });
+                        }, 1000);
+                    }
+                }
+        );
+    }
+
+    /**
+     * Active l'écoute pour la confirmation de quiz
+     */
+    private void activateQuizConfirmationListening() {
+        Logger.d(TAG, "Activation écoute confirmation quiz");
+
+        // Expression d'écoute
+        buddyController.getExpressionManager().showListening(null);
+
+        // Démarrer l'écoute
+        buddyController.getSpeechManager().startListening(new BuddySpeechManager.ListeningCallback() {
+            @Override
+            public void onSpeechRecognized(String utterance, float confidence) {
+                Logger.i(TAG, "Confirmation reçue: '" + utterance + "' (confiance: " + confidence + ")");
+
+                runOnUiThread(() -> {
+                    processQuizConfirmation(utterance.toLowerCase().trim());
+                });
+            }
+
+            @Override
+            public void onListeningError(String error) {
+                Logger.e(TAG, "Erreur écoute confirmation: " + error);
+
+                runOnUiThread(() -> {
+                    buddyController.getSpeechManager().speak(
+                            "Je n'ai pas bien entendu. Peux-tu répéter ? Dis 'oui' ou 'non'.",
+                            new BuddySpeechManager.SpeechCallback() {
+                                @Override
+                                public void onSpeechFinished() {
+                                    // Réessayer l'écoute
+                                    handler.postDelayed(() -> activateQuizConfirmationListening(), 1000);
+                                }
+                            });
+                });
+            }
+        });
+    }
+
+    /**
+     * Traite la réponse de confirmation du quiz
+     */
+    private void processQuizConfirmation(String utterance) {
+        Logger.d(TAG, "Traitement confirmation: '" + utterance + "'");
+
+        isWaitingForQuizConfirmation = false;
+
+        // Analyse de la réponse
+        if (utterance.contains("oui") || utterance.contains("ok") ||
+                utterance.contains("d'accord") || utterance.contains("allons-y") ||
+                utterance.contains("allez") || utterance.contains("vas-y")) {
+
+            // L'utilisateur accepte le quiz
+            Logger.i(TAG, "Quiz accepté par l'utilisateur");
+
+            buddyController.getExpressionManager().showHappiness(() -> {
+                buddyController.getSpeechManager().speak(
+                        "Super ! Commençons le quiz de mathématiques !",
+                        new BuddySpeechManager.SpeechCallback() {
+                            @Override
+                            public void onSpeechFinished() {
+                                // Démarrer le quiz après 1 seconde
+                                handler.postDelayed(() -> quizManager.startQuiz(), 1000);
+                            }
+                        });
+            });
+
+        } else if (utterance.contains("non") || utterance.contains("pas") ||
+                utterance.contains("attendre") || utterance.contains("plus tard")) {
+
+            // L'utilisateur refuse le quiz
+            Logger.i(TAG, "Quiz refusé par l'utilisateur");
+
+            buddyController.getExpressionManager().showNeutral(() -> {
+                buddyController.getSpeechManager().speak(
+                        "Pas de problème ! Quand tu seras prêt, dis-moi 'je veux faire le quiz' et on commencera !",
+                        new BuddySpeechManager.SpeechCallback() {
+                            @Override
+                            public void onSpeechFinished() {
+                                // Attendre une nouvelle demande
+                                handler.postDelayed(() -> activateQuizRequestListening(), 2000);
+                            }
+                        });
+            });
+
+        } else {
+            // Réponse non comprise
+            Logger.w(TAG, "Réponse non comprise: '" + utterance + "'");
+
+            buddyController.getSpeechManager().speak(
+                    "Je n'ai pas compris. Dis simplement 'oui' pour commencer le quiz ou 'non' si tu préfères attendre.",
+                    new BuddySpeechManager.SpeechCallback() {
+                        @Override
+                        public void onSpeechFinished() {
+                            // Réessayer la confirmation
+                            handler.postDelayed(() -> activateQuizConfirmationListening(), 1000);
+                        }
+                    });
+        }
+    }
+
+    /**
+     * Active l'écoute pour une demande de quiz différée
+     */
+    private void activateQuizRequestListening() {
+        Logger.d(TAG, "Écoute en attente d'une demande de quiz");
+
+        buddyController.getExpressionManager().showNeutral(null);
+
+        buddyController.getSpeechManager().startListening(new BuddySpeechManager.ListeningCallback() {
+            @Override
+            public void onSpeechRecognized(String utterance, float confidence) {
+                String cleanUtterance = utterance.toLowerCase().trim();
+
+                if (cleanUtterance.contains("quiz") || cleanUtterance.contains("commencer") ||
+                        cleanUtterance.contains("allons") || cleanUtterance.contains("prêt")) {
+
+                    Logger.i(TAG, "Demande de quiz détectée: '" + utterance + "'");
+                    runOnUiThread(() -> {
+                        buddyController.getSpeechManager().speak("Parfait ! Commençons !",
+                                new BuddySpeechManager.SpeechCallback() {
+                                    @Override
+                                    public void onSpeechFinished() {
+                                        quizManager.startQuiz();
+                                    }
+                                });
+                    });
+                } else {
+                    // Continuer l'écoute en silence
+                    handler.postDelayed(() -> activateQuizRequestListening(), 1000);
+                }
+            }
+
+            @Override
+            public void onListeningError(String error) {
+                // Relancer l'écoute en continu
+                handler.postDelayed(() -> activateQuizRequestListening(), 2000);
+            }
+        });
     }
 
     // ========== CALLBACKS QUIZ ==========
 
     @Override
     public void onQuizStarted() {
-        Logger.i(TAG, "Quiz démarré - notification reçue");
+        Logger.i(TAG, "Quiz démarré en mode vocal");
+        isQuizStarted = true;
 
-        // Faire parler Buddy pour introduire le quiz - CORRECTION ICI
         buddyController.getSpeechManager().speakQuizStart(
                 quizManager.getQuestionGenerator().getTotalQuestions(),
                 new BuddySpeechManager.SpeechCallback() {
                     @Override
                     public void onSpeechFinished() {
-                        Logger.d(TAG, "Introduction terminée");
-                        // Le QuizManager s'occupera de poser la première question
+                        Logger.d(TAG, "Introduction quiz terminée - déclenchement première question");
+                        // CORRECTION : Délai plus long pour éviter conflit de parole
+                        handler.postDelayed(() -> {
+                            if (quizManager != null) {
+                                Logger.d(TAG, "Tentative de lancement première question");
+                                quizManager.askCurrentQuestion();
+                            }
+                        }, 2000); // 2 secondes au lieu de 1
                     }
                 }
         );
@@ -126,69 +316,227 @@ public class MainActivity extends BuddyActivity
     public void onQuestionReady(String question, int questionNumber, int totalQuestions) {
         Logger.i(TAG, "Question prête: " + questionNumber + "/" + totalQuestions);
 
+        // CORRECTION : Arrêter toute parole en cours avant de commencer
+        buddyController.getSpeechManager().stopSpeaking();
+
+        // Délai pour s'assurer que la parole précédente est arrêtée
+        handler.postDelayed(() -> {
+            // Expression neutre pour poser la question
+            buddyController.getExpressionManager().showNeutral(() -> {
+
+                Logger.d(TAG, "Début prononciation question: " + question);
+                buddyController.getSpeechManager().speakQuestion(question, questionNumber,
+                        new BuddySpeechManager.SpeechCallback() {
+                            @Override
+                            public void onSpeechFinished() {
+                                Logger.d(TAG, "Question prononcée - activation écoute automatique");
+
+                                // Délai puis "je t'écoute" et activation automatique
+                                handler.postDelayed(() -> {
+                                    buddyController.getSpeechManager().speak("Je t'écoute...",
+                                            new BuddySpeechManager.SpeechCallback() {
+                                                @Override
+                                                public void onSpeechFinished() {
+                                                    activateAnswerListening();
+                                                }
+                                            });
+                                }, 1000);
+                            }
+
+                            @Override
+                            public void onSpeechError(String error) {
+                                Logger.e(TAG, "Erreur prononciation question: " + error);
+                                // Réessayer après délai
+                                handler.postDelayed(() -> activateAnswerListening(), 2000);
+                            }
+                        }
+                );
+            });
+        }, 500); // 500ms pour s'assurer que la parole précédente est arrêtée
+    }
+
+    /**
+     * Active l'écoute pour la réponse à la question
+     */
+    private void activateAnswerListening() {
+        Logger.d(TAG, "Activation écoute réponse");
+
         // Expression d'écoute
         buddyController.getExpressionManager().showListening(null);
 
-        // Faire parler Buddy - CORRECTION ICI
-        buddyController.getSpeechManager().speakQuestion(question, questionNumber,
-                new BuddySpeechManager.SpeechCallback() {
-                    @Override
-                    public void onSpeechFinished() {
-                        Logger.d(TAG, "Question prononcée, activation écoute");
-                        // Activer l'écoute après que Buddy ait fini de parler
-                        quizManager.enableAnswerListening();
-                    }
-                }
-        );
+        // Démarrer l'écoute
+        buddyController.getSpeechManager().startListening(new BuddySpeechManager.ListeningCallback() {
+            @Override
+            public void onSpeechRecognized(String utterance, float confidence) {
+                Logger.i(TAG, "Réponse reçue: '" + utterance + "' (confiance: " + confidence + ")");
+
+                runOnUiThread(() -> {
+                    quizManager.processVocalAnswer(utterance);
+                });
+            }
+
+            @Override
+            public void onListeningError(String error) {
+                Logger.e(TAG, "Erreur écoute réponse: " + error);
+
+                runOnUiThread(() -> {
+                    // CORRECTION : Gestion appropriée des erreurs d'écoute
+                    buddyController.getExpressionManager().showThinking(() -> {
+                        buddyController.getSpeechManager().speak(
+                                "Je n'ai pas bien entendu ta réponse. Peux-tu répéter plus clairement ?",
+                                new BuddySpeechManager.SpeechCallback() {
+                                    @Override
+                                    public void onSpeechFinished() {
+                                        Logger.d(TAG, "Message d'aide prononcé - relance écoute");
+                                        // Redire "Je t'écoute" et relancer l'écoute
+                                        handler.postDelayed(() -> {
+                                            buddyController.getSpeechManager().speak("Je t'écoute...",
+                                                    new BuddySpeechManager.SpeechCallback() {
+                                                        @Override
+                                                        public void onSpeechFinished() {
+                                                            activateAnswerListening();
+                                                        }
+                                                    });
+                                        }, 1000);
+                                    }
+                                });
+                    });
+                });
+            }
+        });
     }
+
+// EXTRAIT DE MODIFICATION POUR MainActivity.java
+// Remplacer la section onAnswerProcessed
 
     @Override
     public void onAnswerProcessed(AnswerProcessor.ProcessedAnswer processedAnswer, int correctAnswer) {
         Logger.i(TAG, "Réponse traitée: " + processedAnswer.getResult());
 
         if (processedAnswer.isCorrect()) {
-            // Bonne réponse
+            // BONNE RÉPONSE - TIMING OPTIMISÉ
+            Logger.d(TAG, "Bonne réponse - séquence optimisée");
+
+            // 1. DÉMARRER L'EXPRESSION DE JOIE
             buddyController.getExpressionManager().performCorrectAnswerSequence();
 
-            // CORRECTION ICI
+            // 2. DÉMARRER LE HOCHEMENT EN MÊME TEMPS QUE LA PAROLE
+            // CORRECTION: Hochement immédiat, pas après la parole
+            handler.postDelayed(() -> {
+                Logger.d(TAG, "🎯 Déclenchement hochement PENDANT la parole");
+                buddyController.getMovementManager().performSynchronizedYesNod();
+            }, 300); // Délai court pour que le hochement accompagne la parole
+
+            // 3. PAROLE DE FÉLICITATION
             buddyController.getSpeechManager().speakCorrectAnswer(correctAnswer,
                     new BuddySpeechManager.SpeechCallback() {
                         @Override
                         public void onSpeechFinished() {
-                            // Hochement de tête après la parole
+                            Logger.d(TAG, "Feedback positif terminé");
+
+                            // CORRECTION: Retour expression neutre plus naturel
+                            handler.postDelayed(() -> {
+                                Logger.d(TAG, "Fin célébration - retour neutre");
+                                buddyController.getExpressionManager().showNeutral(null);
+                            }, 1500); // Délai réduit
+                        }
+
+                        @Override
+                        public void onSpeechError(String error) {
+                            Logger.e(TAG, "Erreur parole positive: " + error);
+                            // Hochement de secours même si la parole échoue
                             buddyController.getMovementManager().performYesNod();
                         }
                     }
             );
 
-        } else {
-            // Mauvaise réponse
+        } else if (processedAnswer.isValid()) {
+            // MAUVAISE RÉPONSE - Pas de mouvement, juste expression et parole
+            Logger.d(TAG, "Mauvaise réponse - expression triste seulement");
+
             buddyController.getExpressionManager().performIncorrectAnswerSequence();
 
-            // CORRECTION ICI
             buddyController.getSpeechManager().speakIncorrectAnswer(
-                    processedAnswer.getExtractedNumber(),
-                    correctAnswer,
+                    processedAnswer.getExtractedNumber(), correctAnswer,
                     new BuddySpeechManager.SpeechCallback() {
                         @Override
                         public void onSpeechFinished() {
-                            Logger.d(TAG, "Explication terminée");
+                            Logger.d(TAG, "Feedback négatif terminé");
+                            // Retour neutre plus rapide
+                            handler.postDelayed(() -> {
+                                buddyController.getExpressionManager().showNeutral(null);
+                            }, 1000);
                         }
                     }
             );
+
+        } else {
+            // RÉPONSE INVALIDE - Expression de réflexion
+            Logger.w(TAG, "Réponse invalide, guidage utilisateur");
+
+            buddyController.getExpressionManager().showThinking(() -> {
+                buddyController.getSpeechManager().speak(
+                        "Je n'ai pas compris. Peux-tu répéter le nombre plus clairement ?",
+                        new BuddySpeechManager.SpeechCallback() {
+                            @Override
+                            public void onSpeechFinished() {
+                                Logger.d(TAG, "Message d'aide prononcé - relance écoute");
+                                // Relance immédiate de l'écoute
+                                handler.postDelayed(() -> {
+                                    buddyController.getSpeechManager().speak("Je t'écoute...",
+                                            new BuddySpeechManager.SpeechCallback() {
+                                                @Override
+                                                public void onSpeechFinished() {
+                                                    activateAnswerListening();
+                                                }
+                                            });
+                                }, 500); // Délai réduit
+                            }
+                        }
+                );
+            });
         }
     }
 
+    // MODIFICATION POUR onQuizFinished - Score exceptionnel = triple hochement
     @Override
     public void onQuizFinished(ScoreManager scoreManager) {
-        Logger.i(TAG, "Quiz terminé - score final: " + scoreManager.getScoreString());
+        Logger.i(TAG, "Quiz terminé - Score: " + scoreManager.getCorrectAnswers() + "/" + scoreManager.getTotalQuestions());
+        isQuizStarted = false;
 
         boolean hasPassingGrade = scoreManager.hasPassingGrade();
+        boolean isPerfectScore = (scoreManager.getCorrectAnswers() == scoreManager.getTotalQuestions());
 
-        // Expression selon le résultat
+        // Expression de fin
         buddyController.getExpressionManager().performEndQuizSequence(hasPassingGrade);
 
-        // Parole de fin - CORRECTION ICI
+        // TIMING OPTIMISÉ: Mouvement pendant la parole de fin
+        if (hasPassingGrade) {
+            if (isPerfectScore) {
+                // SCORE PARFAIT = Triple hochement + danse
+                Logger.i(TAG, "🏆 SCORE PARFAIT - Célébration maximale");
+
+                handler.postDelayed(() -> {
+                    buddyController.getMovementManager().performTripleYesNod();
+                }, 500);
+
+                handler.postDelayed(() -> {
+                    buddyController.getMovementManager().performVictoryDance();
+                }, 3000);
+
+            } else {
+                // BON SCORE = Hochement simple + danse
+                handler.postDelayed(() -> {
+                    buddyController.getMovementManager().performYesNod();
+                }, 500);
+
+                handler.postDelayed(() -> {
+                    buddyController.getMovementManager().performVictoryDance();
+                }, 2500);
+            }
+        }
+
+        // Parole de fin
         buddyController.getSpeechManager().speakFinalScore(
                 scoreManager.getCorrectAnswers(),
                 scoreManager.getTotalQuestions(),
@@ -196,17 +544,19 @@ public class MainActivity extends BuddyActivity
                 new BuddySpeechManager.SpeechCallback() {
                     @Override
                     public void onSpeechFinished() {
-                        // Mouvement de célébration si réussite
-                        if (hasPassingGrade) {
-                            buddyController.getMovementManager().performVictoryDance();
-                        }
+                        Logger.d(TAG, "Score final annoncé");
 
-                        // Proposer un nouveau quiz après 10 secondes
-                        android.os.Handler handler = new android.os.Handler();
+                        // Proposer nouveau quiz après délai
                         handler.postDelayed(() -> {
-                            buddyController.speak("Veux-tu refaire un quiz ?");
-                            quizManager.regenerateQuestions();
-                        }, 10000);
+                            buddyController.getSpeechManager().speak(
+                                    "Veux-tu faire un autre quiz ? Dis 'oui' ou 'non'.",
+                                    new BuddySpeechManager.SpeechCallback() {
+                                        @Override
+                                        public void onSpeechFinished() {
+                                            activateQuizConfirmationListening();
+                                        }
+                                    });
+                        }, 2000); // Délai raisonnable
                     }
                 }
         );
@@ -215,95 +565,15 @@ public class MainActivity extends BuddyActivity
     @Override
     public void onQuizError(String error) {
         Logger.e(TAG, "Erreur quiz: " + error);
-        uiController.showError("Erreur quiz: " + error);
 
-        // CORRECTION ICI
-        buddyController.getSpeechManager().speakTechnicalError(new BuddySpeechManager.SpeechCallback() {
-            @Override
-            public void onSpeechFinished() {
-                Logger.d(TAG, "Message d'erreur technique prononcé");
-            }
-        });
-    }
-
-    // ========== ÉVÉNEMENTS UI ==========
-
-    /**
-     * Appelé quand le bouton "Commencer Quiz" est cliqué
-     */
-    private void onStartQuizClicked() {
-        if (!isSDKReady) {
-            Logger.w(TAG, "SDK pas prêt, impossible de démarrer le quiz");
-            uiController.showError("Buddy n'est pas encore prêt");
-            return;
-        }
-
-        if (quizManager == null) {
-            Logger.e(TAG, "QuizManager non initialisé");
-            uiController.showError("Erreur interne - redémarrer l'app");
-            return;
-        }
-
-        Logger.i(TAG, "Bouton Start Quiz cliqué");
-        buddyController.getExpressionManager().setExpression(FacialExpression.HAPPY);
-        quizManager.startQuiz();
-    }
-
-    /**
-     * Appelé quand le bouton "Écouter" est cliqué
-     */
-    private void onListenAnswerClicked() {
-        if (!isSDKReady) {
-            Logger.w(TAG, "SDK pas prêt, impossible d'écouter");
-            uiController.showError("Buddy n'est pas encore prêt");
-            return;
-        }
-
-        if (quizManager == null) {
-            Logger.e(TAG, "QuizManager non initialisé");
-            uiController.showError("Erreur interne - redémarrer l'app");
-            return;
-        }
-
-        Logger.i(TAG, "Bouton Listen Answer cliqué - FreeSpeech activé");
-
-        // Expression d'écoute
-        buddyController.getExpressionManager().showListening(null);
-
-        // Démarrer l'écoute via le quiz manager
-        quizManager.startListening();
-
-        // Démarrer l'écoute vocale avec FreeSpeech - CORRECTION ICI
-        buddyController.getSpeechManager().startListening(new BuddySpeechManager.ListeningCallback() {
-            @Override
-            public void onSpeechRecognized(String utterance, float confidence) {
-                Logger.i(TAG, "FreeSpeech - Parole reconnue: '" + utterance + "' (confiance: " + confidence + ")");
-
-                runOnUiThread(() -> {
-                    uiController.updateStatus("FreeSpeech: '" + utterance + "'");
-
-                    // Traiter la réponse via le quiz manager
-                    quizManager.processVocalAnswer(utterance);
+        buddyController.getSpeechManager().speak(
+                "Il y a eu un problème. Veux-tu réessayer ?",
+                new BuddySpeechManager.SpeechCallback() {
+                    @Override
+                    public void onSpeechFinished() {
+                        activateQuizConfirmationListening();
+                    }
                 });
-            }
-
-            @Override
-            public void onListeningError(String error) {
-                Logger.e(TAG, "Erreur FreeSpeech: " + error);
-
-                runOnUiThread(() -> {
-                    uiController.showError("Erreur FreeSpeech: " + error);
-                    uiController.setListenAnswerEnabled(true);
-
-                    buddyController.getSpeechManager().speakParsingError(new BuddySpeechManager.SpeechCallback() {
-                        @Override
-                        public void onSpeechFinished() {
-                            Logger.d(TAG, "Message d'erreur prononcé");
-                        }
-                    });
-                });
-            }
-        });
     }
 
     // ========== GESTION DU CYCLE DE VIE ==========
@@ -334,12 +604,17 @@ public class MainActivity extends BuddyActivity
         // Remettre l'expression neutre si nécessaire
         if (isSDKReady && buddyController != null) {
             buddyController.getExpressionManager().showNeutral(null);
+
+            // Relancer l'écoute si nécessaire
+            if (!isQuizStarted && !isWaitingForQuizConfirmation) {
+                handler.postDelayed(() -> activateQuizRequestListening(), 1000);
+            }
         }
     }
 
     @Override
     protected void onDestroy() {
-        Logger.i(TAG, "=== FERMETURE QUIZ DE MATHS BUDDY ===");
+        Logger.i(TAG, "=== FERMETURE QUIZ VOCAL BUDDY ===");
 
         // Nettoyer les ressources
         if (buddyController != null) {

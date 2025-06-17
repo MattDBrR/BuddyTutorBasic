@@ -114,15 +114,16 @@ public class BuddyExpressionManager {
     }
 
     /**
-     * Séquence d'expressions pour une bonne réponse
+     * Séquence d'expressions pour une bonne réponse - VERSION LONGUE
      */
     public void performCorrectAnswerSequence() {
-        Logger.i(TAG, "Séquence expression bonne réponse");
+        Logger.i(TAG, "Séquence expression bonne réponse - VERSION LONGUE");
 
         // D'abord joie
         showHappiness(() -> {
-            // Puis retour au neutre après 2 secondes
-            handler.postDelayed(() -> showNeutral(null), 2000);
+            Logger.d(TAG, "Expression de joie affichée, maintien pendant 5 secondes");
+            // CORRECTION : Maintenir la joie plus longtemps (5 secondes au lieu de 2)
+            // Le retour au neutre sera géré dans MainActivity après le hochement de tête
         });
     }
 
@@ -134,8 +135,8 @@ public class BuddyExpressionManager {
 
         // D'abord réflexion
         showThinking(() -> {
-            // Puis retour au neutre après 2 secondes
-            handler.postDelayed(() -> showNeutral(null), 2000);
+            // Puis retour au neutre après 3 secondes
+            handler.postDelayed(() -> showNeutral(null), 3000);
         });
     }
 
@@ -146,16 +147,33 @@ public class BuddyExpressionManager {
         Logger.i(TAG, "Séquence expression fin de quiz (succès: " + hasPassingGrade + ")");
 
         if (hasPassingGrade) {
-            // Surprise puis joie
+            // Surprise puis joie LONGUE
             showSurprise(() -> {
-                handler.postDelayed(() -> showHappiness(null), 1500);
+                handler.postDelayed(() -> {
+                    showHappiness(() -> {
+                        // Maintenir la joie 8 secondes pour la fin du quiz
+                        handler.postDelayed(() -> showNeutral(null), 8000);
+                    });
+                }, 1500);
             });
         } else {
             // Réflexion puis encouragement (neutre)
             showThinking(() -> {
-                handler.postDelayed(() -> showNeutral(null), 2000);
+                handler.postDelayed(() -> showNeutral(null), 3000);
             });
         }
+    }
+
+    /**
+     * NOUVELLE : Séquence de joie prolongée pour célébration spéciale
+     */
+    public void performExtendedHappinessSequence(int durationSeconds) {
+        Logger.i(TAG, "Séquence de joie prolongée (" + durationSeconds + " secondes)");
+
+        showHappiness(() -> {
+            // Maintenir la joie pendant la durée spécifiée
+            handler.postDelayed(() -> showNeutral(null), durationSeconds * 1000);
+        });
     }
 
     /**

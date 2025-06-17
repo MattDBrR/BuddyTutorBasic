@@ -1,117 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="20dp"
-    android:gravity="center"
-    android:background="#E3F2FD">
+    android:background="#00000000">
 
-    <!-- Vue pour le visage de Buddy (requis par le SDK) -->
+    <!-- Vue pour le visage de Buddy (plein écran transparent) -->
     <View
         android:id="@+id/view_face"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0.1" />
+        android:layout_height="match_parent"
+        android:background="#00000000" />
 
-    <!-- Titre -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="🧮 Quiz de Maths avec Buddy 🤖"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:textColor="#1976D2"
-        android:gravity="center"
-        android:layout_marginBottom="30dp" />
-
-    <!-- Status du SDK -->
-    <TextView
-        android:id="@+id/txtStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Initialisation..."
-        android:textSize="18sp"
-        android:textColor="#424242"
-        android:gravity="center"
-        android:padding="15dp"
-        android:background="#FFFFFF"
-        android:layout_marginBottom="20dp"
-        android:elevation="2dp" />
-
-    <!-- Zone de question -->
-    <TextView
-        android:id="@+id/txtQuestion"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Prêt pour le quiz ?"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="#2E7D32"
-        android:gravity="center"
-        android:padding="20dp"
-        android:background="#E8F5E8"
-        android:layout_marginBottom="20dp"
-        android:elevation="3dp"
-        android:layout_weight="1" />
-
-    <!-- Score -->
-    <TextView
-        android:id="@+id/txtScore"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Score: 0/0"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#F57C00"
-        android:gravity="center"
-        android:padding="15dp"
-        android:background="#FFF3E0"
-        android:layout_marginBottom="30dp"
-        android:elevation="2dp" />
-
-    <!-- Boutons -->
+    <!-- Overlay de debug minimal (optionnel, peut être masqué) -->
     <LinearLayout
+        android:id="@+id/debug_overlay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
         android:orientation="vertical"
-        android:gravity="center">
+        android:background="#33000000"
+        android:padding="10dp"
+        android:visibility="gone">
 
-        <Button
-            android:id="@+id/btnStartQuiz"
-            android:layout_width="300dp"
-            android:layout_height="60dp"
-            android:text="🚀 Commencer le Quiz"
-            android:textSize="18sp"
-            android:textStyle="bold"
+        <TextView
+            android:id="@+id/txtDebugStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Debug: Prêt"
+            android:textSize="12sp"
             android:textColor="#FFFFFF"
-            android:background="#4CAF50"
-            android:layout_marginBottom="15dp"
-            android:elevation="4dp" />
+            android:gravity="center" />
 
-        <Button
-            android:id="@+id/btnListenAnswer"
-            android:layout_width="300dp"
-            android:layout_height="60dp"
-            android:text="🎤 Écouter ma réponse"
-            android:textSize="18sp"
-            android:textStyle="bold"
+        <TextView
+            android:id="@+id/txtDebugScore"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Score: 0/0"
+            android:textSize="12sp"
             android:textColor="#FFFFFF"
-            android:background="#2196F3"
-            android:elevation="4dp" />
+            android:gravity="center" />
 
     </LinearLayout>
 
-    <!-- Instructions -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="💡 Dis ta réponse à voix haute quand Buddy pose une question !"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:gravity="center"
-        android:padding="15dp"
-        android:layout_marginTop="20dp"
-        android:background="#F5F5F5" />
-
-</LinearLayout>
+</RelativeLayout>

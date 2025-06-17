@@ -7,40 +7,55 @@ import com.bfr.helloworld.R;
 import com.bfr.helloworld.utils.Logger;
 
 /**
- * Contrôleur de l'interface utilisateur pour interface 100% vocale
- * Compatible avec UICallback interface
+ * Contrôleur UI pour interface 100% vocale
+ * Pas de boutons, interaction uniquement par la voix
  */
-public class UIController implements UICallback {
-    private static final String TAG = "UIController";
+public class VocalUIController implements UICallback {
+    private static final String TAG = "VocalUIController";
+    private static final boolean DEBUG_MODE = false; // Mettre à true pour voir les infos de debug
 
     private final Activity activity;
     private final TextView txtDebugStatus;
     private final TextView txtDebugScore;
     private final View debugOverlay;
 
-    public UIController(Activity activity) {
+    public VocalUIController(Activity activity) {
         this.activity = activity;
 
-        // Vues optionnelles pour le debug (peuvent être null)
+        // Initialisation des vues de debug (optionnelles)
         txtDebugStatus = activity.findViewById(R.id.txtDebugStatus);
         txtDebugScore = activity.findViewById(R.id.txtDebugScore);
         debugOverlay = activity.findViewById(R.id.debug_overlay);
 
-        Logger.i(TAG, "UIController initialisé pour interface vocale");
+        // Masquer le debug par défaut
+        setDebugVisible(DEBUG_MODE);
+
+        Logger.i(TAG, "VocalUIController initialisé - Mode 100% vocal");
+    }
+
+    /**
+     * Active/désactive l'affichage du debug
+     */
+    public void setDebugVisible(boolean visible) {
+        if (debugOverlay != null) {
+            debugOverlay.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
     }
 
     @Override
     public void updateStatus(String message) {
         Logger.i(TAG, "Status: " + message);
 
-        if (txtDebugStatus != null) {
-            activity.runOnUiThread(() -> txtDebugStatus.setText(message));
+        if (txtDebugStatus != null && DEBUG_MODE) {
+            activity.runOnUiThread(() -> txtDebugStatus.setText("Status: " + message));
         }
     }
 
     @Override
     public void updateQuestion(String question, int questionNumber, int totalQuestions) {
         Logger.i(TAG, "Question " + questionNumber + "/" + totalQuestions + ": " + question);
+
+        // Pas d'affichage visuel, tout est vocal
         updateStatus("Question " + questionNumber + "/" + totalQuestions);
     }
 
@@ -48,7 +63,7 @@ public class UIController implements UICallback {
     public void updateScore(int correctAnswers, int currentQuestion) {
         Logger.i(TAG, "Score: " + correctAnswers + "/" + currentQuestion);
 
-        if (txtDebugScore != null) {
+        if (txtDebugScore != null && DEBUG_MODE) {
             activity.runOnUiThread(() -> {
                 String scoreText = "Score: " + correctAnswers + "/" + currentQuestion;
                 txtDebugScore.setText(scoreText);
@@ -58,53 +73,36 @@ public class UIController implements UICallback {
 
     @Override
     public void setStartQuizEnabled(boolean enabled) {
-        Logger.d(TAG, "Quiz " + (enabled ? "peut être démarré" : "ne peut pas être démarré"));
         // Pas de boutons dans l'interface vocale
+        Logger.d(TAG, "Quiz " + (enabled ? "peut être démarré" : "ne peut pas être démarré"));
     }
 
     @Override
     public void setListenAnswerEnabled(boolean enabled) {
-        Logger.d(TAG, "Écoute " + (enabled ? "activée" : "désactivée"));
         // Pas de boutons dans l'interface vocale
+        Logger.d(TAG, "Écoute " + (enabled ? "activée" : "désactivée"));
     }
 
     @Override
     public void showError(String error) {
         Logger.e(TAG, "Erreur: " + error);
-        updateStatus("❌ " + error);
+        updateStatus("Erreur: " + error);
     }
 
     @Override
     public void showSuccess(String message) {
         Logger.i(TAG, "Succès: " + message);
-        updateStatus("✅ " + message);
+        updateStatus("Succès: " + message);
     }
 
     /**
-     * Initialise l'état par défaut
+     * Initialise l'état par défaut (interface vocale)
      */
     public void initializeDefaultState() {
         activity.runOnUiThread(() -> {
             updateStatus("Interface vocale prête");
             updateScore(0, 0);
-
-            // Activer le debug temporairement pour voir ce qui se passe
-            if (debugOverlay != null) {
-                debugOverlay.setVisibility(View.VISIBLE);
-                Logger.d(TAG, "Debug overlay activé temporairement");
-            }
         });
         Logger.i(TAG, "État par défaut initialisé - Interface 100% vocale");
-    }
-
-    /**
-     * Active/désactive l'affichage du debug
-     */
-    public void setDebugVisible(boolean visible) {
-        if (debugOverlay != null) {
-            activity.runOnUiThread(() -> {
-                debugOverlay.setVisibility(visible ? View.VISIBLE : View.GONE);
-            });
-        }
     }
 }

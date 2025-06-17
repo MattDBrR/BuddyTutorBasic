@@ -21,12 +21,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Holo.Light.NoActionBar"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
         tools:targetApi="31">
 
+        <!-- UNE SEULE MainActivity avec theme transparent -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
             android:screenOrientation="landscape"
             android:launchMode="singleTop">
             <intent-filter>
