@@ -2,27 +2,39 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions Buddy SDK -->
+    <!-- Permissions BuddySDK pour le quiz -->
     <uses-permission android:name="com.bfr.buddy.resource.SPEECH" />
+    <uses-permission android:name="com.bfr.buddy.resource.LISTEN" />
+    <uses-permission android:name="com.bfr.buddy.resource.WHEELS" />
+    <uses-permission android:name="com.bfr.buddy.resource.HEAD" />
     <uses-permission android:name="com.bfr.buddy.resource.FACE" />
-    <uses-permission android:name="com.bfr.buddy.resource.LEDS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Permissions supprimées car FreeSpeech fonctionne en local -->
+    <!-- <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> -->
+    <!-- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> -->
 
     <application
         android:name=".MainApplication"
-        android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/BuddyTheme"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Holo.Light.NoActionBar"
         tools:targetApi="31">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
-</manifest>
 
+    </application>
+
+</manifest>

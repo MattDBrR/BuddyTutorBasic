@@ -3,10 +3,16 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        jcenter() // Warning: this repository is going to shut down soon
         maven { url "https://jitpack.io" }
+        maven {
+            url "https://bluefrogrobotics.jfrog.io/artifactory/bluefrogrobotics-libs-release-local/"
+            credentials {
+                username = System.getenv('MAVEN_USER') ?: ''
+                password = System.getenv('MAVEN_PASSWORD') ?: ''
+            }
+        }
     }
 }
 
-rootProject.name = "HelloWorld"
+rootProject.name = "BuddyTutorBasic"
 include ':app'
